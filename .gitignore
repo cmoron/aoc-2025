@@ -1,5 +1,6 @@
 /target
 **/target
+**/input.txt
 .env
 .DS_Store
 **/*.rs.bk
