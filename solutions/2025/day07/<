@@ -1,0 +1,59 @@
+fn main() {
+    // let input = include_str!("../input.txt");
+    let input = include_str!("../example.txt");
+    let diagram = parse(input);
+
+    let start = std::time::Instant::now();
+    println!("Part 1: {}", part1(&diagram));
+    println!("Time: {:.4}ms", start.elapsed().as_secs_f64() * 1000.0);
+
+    let start = std::time::Instant::now();
+    println!("Part 2: {}", part2(&diagram));
+    println!("Time: {:.4}ms", start.elapsed().as_secs_f64() * 1000.0);
+}
+
+fn print_diagram(diagram: &[Vec<char>]) {
+    for line in diagram {
+        for c in line {
+            print!("{}", c);
+        }
+        println!("");
+    }
+}
+
+fn parse(input: &str) -> Vec<Vec<char>> {
+    input.lines().map(|line| line.chars().collect()).collect()
+}
+
+fn part1(diagram: &[Vec<char>]) -> usize {
+    print_diagram(diagram);
+    let c = diagram[0].len();
+    let s_index = diagram[0].iter().position(|&s| s == 'S').unwrap();
+    let mut beams = vec![0; c];
+    beams[s_index] = 1;
+
+    for line in diagram[1..].iter() {
+        if line.iter().all(|&c| c == '.') {
+            continue;
+        }
+        println!("{:?}", line);
+    }
+
+    beams.iter().fold(0, |acc, x| acc + x)
+}
+
+fn part2(input: &[Vec<char>]) -> usize {
+    0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_part1_example() {
+        let example_input = include_str!("../example.txt");
+        let diagram = parse(example_input);
+        assert_eq!(part1(&diagram), 21);
+    }
+}
