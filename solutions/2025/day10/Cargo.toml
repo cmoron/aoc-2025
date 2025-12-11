@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 itertools = "0.10.5"
 regex = "1.10.3"
+good_lp = { version = "1.14.1", default-features = false, features = ["microlp"] }

@@ -1,7 +1,11 @@
 use std::collections::VecDeque;
 
+use good_lp::{
+    variables, variable, SolverModel, Solution, Expression,
+    solvers::microlp::microlp,
+};
+
 fn main() {
-    // let input = include_str!("../example.txt");
     let input = include_str!("../input.txt");
     let machines = parse(input);
 
@@ -10,37 +14,16 @@ fn main() {
     println!("Time: {:.4}ms", start.elapsed().as_secs_f64() * 1000.0);
 
     let start = std::time::Instant::now();
-    println!("Part 2: {}", part2(input));
+    println!("Part 2: {}", part2(&machines));
     println!("Time: {:.4}ms", start.elapsed().as_secs_f64() * 1000.0);
 }
 
 #[derive(Debug)]
 struct Machine {
-    target: Vec<char>,
     target_mask: u64,
     buttons: Vec<u64>,
-    joltage: Vec<usize>,
+    joltage: Vec<u16>,
     nb_lights: usize,
-}
-
-fn print_machines(machine: &[Machine]) {
-    for (i, m) in machine.iter().enumerate() {
-        println!("Machine {}:", i + 1);
-        println!("  Target: {}", m.target.iter().collect::<String>());
-        println!(
-            "  Target_mask: {:0width$b}",
-            m.target_mask,
-            width = m.nb_lights
-        );
-        print!("  Buttons: [");
-        for btn in &m.buttons[..m.buttons.len() - 1] {
-            print!("{:0b}, ", btn);
-        }
-        print!("{:0b}]", m.buttons.last().unwrap());
-        println!("  Joltage: {:?}", m.joltage);
-        println!("  Nb lights: {:?}", m.nb_lights);
-        println!();
-    }
 }
 
 fn parse(input: &str) -> Vec<Machine> {
@@ -77,13 +60,12 @@ fn parse(input: &str) -> Vec<Machine> {
                 .iter()
                 .map(|btn| btn.iter().fold(0u64, |mask, &idx| mask | (1u64 << idx)))
                 .collect();
-            let joltage: Vec<usize> = parsed_joltage_str
+            let joltage: Vec<u16> = parsed_joltage_str
                 .split(',')
                 .map(|j| j.parse().unwrap())
                 .collect();
 
             Machine {
-                target: target,
                 target_mask: target_mask,
                 buttons: buttons_mask,
                 joltage: joltage,
@@ -131,12 +113,48 @@ fn solve(m: &Machine) -> Option<usize> {
     None
 }
 
+fn solve2(m: &Machine) -> Option<usize> {
+
+    let num_buttons = m.buttons.len();
+    let num_counters = m.joltage.len();
+
+    // Variables x_j = nombre de pressions sur chaque bouton
+    let mut vars = variables!();
+    let press_vars: Vec<_> = (0..num_buttons)
+        .map(|_| vars.add(variable().min(0).integer()))
+        .collect();
+
+    // Objectif : minimiser la somme des pressions
+    let objective: Expression = press_vars.iter().copied().sum();
+    let mut problem = vars.minimise(objective).using(microlp);
+
+    // Contraintes A x = joltage
+    for i in 0..num_counters {
+        let mut expr: Expression = 0.0.into();
+        for (btn_idx, &mask) in m.buttons.iter().enumerate() {
+            if (mask >> i) & 1 == 1 {
+                expr = expr + press_vars[btn_idx];
+            }
+        }
+        problem = problem.with(expr.eq(m.joltage[i] as f64));
+    }
+
+    let sol = problem.solve().ok()?;
+
+    Some(
+        press_vars
+            .iter()
+            .map(|&v| sol.value(v).round() as usize)
+            .sum(),
+    )
+}
+
 fn part1(machines: &[Machine]) -> usize {
     machines.iter().map(|m| solve(m).unwrap()).sum()
 }
 
-fn part2(input: &str) -> usize {
-    0
+fn part2(machines: &[Machine]) -> usize {
+    machines.iter().map(|m| solve2(m).unwrap()).sum()
 }
 
 #[cfg(test)]
@@ -148,5 +166,12 @@ mod tests {
         let example_input = include_str!("../example.txt");
         let machines = parse(example_input);
         assert_eq!(part1(&machines), 7);
+    }
+
+    #[test]
+    fn test_part2_example() {
+        let example_input = include_str!("../example.txt");
+        let machines = parse(example_input);
+        assert_eq!(part2(&machines), 33);
     }
 }
